@@ -1,18 +1,12 @@
 import ctypes
 from ctypes import POINTER, byref, cast
-from ctypes.wintypes import LPWSTR, DWORD, LPCWSTR, LPDWORD, LPBYTE
+from ctypes.wintypes import LPWSTR, DWORD, LPCWSTR, LPDWORD, LPBYTE, LPVOID, HANDLE, WORD, BOOL
 import subprocess
 import shlex
 
-'''
-TO DO LIST
-RETURN USERS DONE
-ADD USERS DONE
-DEL USERS DONE
-'''
-
 # load dll
 netapi32 = ctypes.WinDLL("Netapi32.dll")
+Advapi32 = ctypes.WinDLL("Advapi32.dll")
 
 # constants
 USER_Level = 1
@@ -20,6 +14,21 @@ user_filter = 2  # FILTER_NORMAL_ACCOUNT
 user_max_preferred_length = DWORD(-1)
 user_privilege = 1  # USER_PRIV_USER
 UF_SCRIPT = DWORD(0)
+
+Status_codes = {
+    0: "NERR_Success",
+    5: "Error_Access_denied",
+    2223: "NERR_GroupExists",
+    2224: "NERR_UserExists",
+    2351: "NERR_Invalid_Computer"
+}
+LOGON_WITH_PROFILE = DWORD(1)  # logon_with_profile
+CREATE_NEW_CONSOLE = DWORD(10)
+
+
+def return_status_code(status_code: int) -> str:
+    res = Status_codes[status_code]
+    return res
 
 
 # incase you just want to return the name of users
@@ -43,6 +52,38 @@ class USER_INFO_1(ctypes.Structure):
     ]
 
 
+class STARTUPINFO(ctypes.Structure):
+    _fields_ = [
+        ("cb", DWORD),
+        ("lpReserved", LPWSTR),
+        ("lpDesktop", LPWSTR),
+        ("lpTitle", LPWSTR),
+        ("dwX", DWORD),
+        ("dwY", DWORD),
+        ("dwXSize", DWORD),
+        ("dwYSize", DWORD),
+        ("dwXCountChars", DWORD),
+        ("dwYCountChars", DWORD),
+        ("dwFillAttribute", DWORD),
+        ("dwFlags", DWORD),
+        ("wShowWindow", WORD),
+        ("cbReserved2", WORD),
+        ("lpReserved2", ctypes.POINTER(ctypes.c_byte)),
+        ("hStdInput", HANDLE),
+        ("hStdOutput", HANDLE),
+        ("hStdError", HANDLE),
+    ]
+
+
+class PROCESS_INFORMATION(ctypes.Structure):
+    _fields_ = [
+        ("hProcess", HANDLE),
+        ("hThread", HANDLE),
+        ("dwProcessId", DWORD),
+        ("dwThreadId", DWORD),
+    ]
+
+
 def which_user_info_level(user_info: int) -> object:
     if user_info == 0:
         return USER_INFO_0
@@ -57,10 +98,11 @@ Net_user_enumerate = netapi32.NetUserEnum
 NetApiBufferFree = netapi32.NetApiBufferFree
 Net_user_add = netapi32.NetUserAdd
 Net_user_del = netapi32.NetUserDel
+Create_Process_With_Logon = Advapi32.CreateProcessWithLogonW
 
 
 def enumerate_users() -> None:
-    # add status codes for the return value of net user enumerate
+    # add status codes for the return value of net_user_enumerate
     Net_user_enumerate.argtypes = [
         LPCWSTR,  # servername
         DWORD,  # level
@@ -93,18 +135,51 @@ def enumerate_users() -> None:
         for ID, user in enumerate(users):
             print(f"ID:{ID} user:{user.usri1_name} ")
     else:
-        print(f"got an error {status}")
+        print(f"got an error {return_status_code(status)}")
+
+
+def log_on_with_user(username: str, password: str):
+    APP_NAME_TO_RUN = "C:\\Windows\\System32\\cmd.exe"
+    Create_Process_With_Logon.argtypes = [
+        LPCWSTR,
+        LPCWSTR,
+        LPCWSTR,
+        DWORD,
+        LPCWSTR,
+        LPWSTR,
+        DWORD,
+        LPVOID,
+        LPCWSTR,
+        POINTER(STARTUPINFO),
+        POINTER(PROCESS_INFORMATION)
+    ]
+    Create_Process_With_Logon.restype = BOOL
+
+    si = STARTUPINFO()
+    si_cb = ctypes.sizeof(STARTUPINFO)
+    pi = PROCESS_INFORMATION()
+
+    status = Create_Process_With_Logon(
+        username,
+        None,  # NO DOMAIN SO LOCAL MACHINE
+        password,
+        LOGON_WITH_PROFILE,  # LOGON_WITH_PROFILE
+        APP_NAME_TO_RUN,  # APP NAME
+        None,  # command line
+        CREATE_NEW_CONSOLE,  # creation flag
+        None,  # environment
+        None,  # current directory
+        byref(si),
+        byref(pi)
+    )
+
+    if status != 0:
+        print("success was able to start process with profile")
+    else:
+        print(f'an error occurred {ctypes.get_last_error()}')
 
 
 def add_user(user_name, password=None) -> None:
-    # some common status codes
-    Status_codes = {
-        0: "NERR_Success",
-        5: "Error Access denied",
-        2223: "NERR_GroupExists",
-        2224: "NERR_UserExists",
-        2351: "NERR_Invalid_Computer"
-    }
     Net_user_add.argtypes = [
         LPCWSTR,  # SERVER_NAME in our case local computer
         DWORD,  # LEVEL
@@ -135,17 +210,16 @@ def add_user(user_name, password=None) -> None:
         try:
             # create user folder
             command_string_to_add_user_folder = f'runas /user:{user_name} cmd.exe'
-            args=shlex.split(command_string_to_add_user_folder)
+            args = shlex.split(command_string_to_add_user_folder)
             subprocess.run(args)
         except subprocess.CalledProcessError as exc:
             print(
                 f"Process failed because did not return a successful return code. "
                 f"Returned {exc.returncode}\n{exc}"
             )
-
     else:
         print(f'failed to create {user_name} \n '
-              f'STATUS:{Status_codes[status]}')
+              f'STATUS:{return_status_code(status)}')
 
 
 def delete_user(user_name: str) -> None:
@@ -161,7 +235,7 @@ def delete_user(user_name: str) -> None:
     if status == 0:  # NERR_Success
         print(f"{user_name} has be deleted from local device ")
     else:
-        print(f'a system error has occurred {status}')  # check the ms docs for the error codes
+        print(f'a system error has occurred {return_status_code(status)}')  # check the ms docs for the error codes
 
 
 if __name__ == "__main__":
@@ -177,15 +251,18 @@ if __name__ == "__main__":
 
         if action == "list users":
             enumerate_users()
+
         elif action == "add user":
-            username = input("enter a user_name :")
+            username = input("enter a user_name:")
             password = input("enter a password: ")
             add_user(username, password)
+
         elif action == "del user":
             enumerate_users()
             print("which user do u want to delete")
             username = input("type the username u want to remeove: ")
             delete_user(username)
+
         else:
             print("invalid command")
             exit()
