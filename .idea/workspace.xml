@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a2dad53e-45fc-48f6-b9d1-0365c5ceb0e6" name="Changes" comment="Implemented the user info struct">
-      <change afterPath="$PROJECT_DIR$/src/list.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Linux_user.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/Linux_user.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/application_downloader.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/application_downloader.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/windows_user.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/windows_user.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

@@ -1,12 +1,14 @@
 import ctypes
 from ctypes import POINTER, byref, cast
 from ctypes.wintypes import LPWSTR, DWORD, LPCWSTR, LPDWORD, LPBYTE
+import subprocess
+import shlex
 
 '''
 TO DO LIST
 RETURN USERS DONE
-ADD USERS
-DEL USERS 
+ADD USERS DONE
+DEL USERS DONE
 '''
 
 # load dll
@@ -17,7 +19,7 @@ USER_Level = 1
 user_filter = 2  # FILTER_NORMAL_ACCOUNT
 user_max_preferred_length = DWORD(-1)
 user_privilege = 1  # USER_PRIV_USER
-flags = DWORD(0)
+UF_SCRIPT = DWORD(0)
 
 
 # incase you just want to return the name of users
@@ -41,6 +43,15 @@ class USER_INFO_1(ctypes.Structure):
     ]
 
 
+def which_user_info_level(user_info: int) -> object:
+    if user_info == 0:
+        return USER_INFO_0
+    elif user_info == 1:
+        return USER_INFO_1
+    else:
+        print(f"invalid info level {user_info}")
+
+
 # api for creating deleting and adding
 Net_user_enumerate = netapi32.NetUserEnum
 NetApiBufferFree = netapi32.NetApiBufferFree
@@ -48,7 +59,8 @@ Net_user_add = netapi32.NetUserAdd
 Net_user_del = netapi32.NetUserDel
 
 
-def enumerate_users():
+def enumerate_users() -> None:
+    # add status codes for the return value of net user enumerate
     Net_user_enumerate.argtypes = [
         LPCWSTR,  # servername
         DWORD,  # level
@@ -84,11 +96,19 @@ def enumerate_users():
         print(f"got an error {status}")
 
 
-def add_user(user_name, password=None):
+def add_user(user_name, password=None) -> None:
+    # some common status codes
+    Status_codes = {
+        0: "NERR_Success",
+        5: "Error Access denied",
+        2223: "NERR_GroupExists",
+        2224: "NERR_UserExists",
+        2351: "NERR_Invalid_Computer"
+    }
     Net_user_add.argtypes = [
         LPCWSTR,  # SERVER_NAME in our case local computer
         DWORD,  # LEVEL
-        POINTER(LPBYTE),  # BUFFER [OUT]
+        LPBYTE,  # BUFFER [OUT]
         LPDWORD  # PARAM_ERR]
     ]
     Net_user_add.restype = DWORD
@@ -101,22 +121,34 @@ def add_user(user_name, password=None):
     user_info.usri1_priv = user_privilege
     user_info.usri1_home_dir = None
     user_info.usri1_comment = None
-    user_info.usri1_flags = flags
+    user_info.usri1_flags = UF_SCRIPT
     user_info.usri1_script_path = None
 
     status = Net_user_add(
-        None,
+        None,  # Defaults to local host
         USER_Level,
-        byref(user_info, LPBYTE),
+        cast(byref(user_info), LPBYTE),
         byref(parm_err)
     )
-    if status == 0:  # NERR_Sucess
+    if status == 0:  # NERR_Success
         print(f"{user_name} was successfully created")
+        try:
+            # create user folder
+            command_string_to_add_user_folder = f'runas /user:{user_name} cmd.exe'
+            args=shlex.split(command_string_to_add_user_folder)
+            subprocess.run(args)
+        except subprocess.CalledProcessError as exc:
+            print(
+                f"Process failed because did not return a successful return code. "
+                f"Returned {exc.returncode}\n{exc}"
+            )
+
     else:
-        print(f'failed to create{user_name}')
+        print(f'failed to create {user_name} \n '
+              f'STATUS:{Status_codes[status]}')
 
 
-def delete_user(user_name: str):
+def delete_user(user_name: str) -> None:
     Net_user_del.argtypes = [
         LPCWSTR,  # LOCAL HOST IN OUR CASE
         LPCWSTR  # USER WE WANT TO KILL
@@ -126,11 +158,34 @@ def delete_user(user_name: str):
         None,
         user_name
     )
-    if status == 0:  # NERR SUCESS
+    if status == 0:  # NERR_Success
         print(f"{user_name} has be deleted from local device ")
     else:
-        print(f'a system error has occured {status}')  # check the ms docs for the error codes
+        print(f'a system error has occurred {status}')  # check the ms docs for the error codes
 
 
 if __name__ == "__main__":
-    enumerate_users()
+    while True:
+        option_map = {"1": "list users",
+                      "2": "add user",
+                      "3": "del user"}
+
+        for keys, options in option_map.items():
+            print(f"{keys} {options}")
+        user_input = (input("enter a option from the list: "))
+        action = option_map[user_input]
+
+        if action == "list users":
+            enumerate_users()
+        elif action == "add user":
+            username = input("enter a user_name :")
+            password = input("enter a password: ")
+            add_user(username, password)
+        elif action == "del user":
+            enumerate_users()
+            print("which user do u want to delete")
+            username = input("type the username u want to remeove: ")
+            delete_user(username)
+        else:
+            print("invalid command")
+            exit()
