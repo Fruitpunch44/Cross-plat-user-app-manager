@@ -1,8 +1,6 @@
 import ctypes
 from ctypes import POINTER, byref, cast
 from ctypes.wintypes import LPWSTR, DWORD, LPCWSTR, LPDWORD, LPBYTE, LPVOID, HANDLE, WORD, BOOL
-import subprocess
-import shlex
 
 # load dll
 netapi32 = ctypes.WinDLL("Netapi32.dll")
@@ -18,12 +16,15 @@ UF_SCRIPT = DWORD(0)
 Status_codes = {
     0: "NERR_Success",
     5: "Error_Access_denied",
+    86: "ERROR_INVALID_PASSWORD",
     2223: "NERR_GroupExists",
     2224: "NERR_UserExists",
-    2351: "NERR_Invalid_Computer"
+    2245: "NERR_PasswordTooShort",
+    2351: "NERR_Invalid_Computer",
+
 }
 LOGON_WITH_PROFILE = DWORD(1)  # logon_with_profile
-CREATE_NEW_CONSOLE = DWORD(10)
+CREATE_NEW_CONSOLE = DWORD(10) # creation flag for log_on_with_user
 
 
 def return_status_code(status_code: int) -> str:
@@ -138,7 +139,7 @@ def enumerate_users() -> None:
         print(f"got an error {return_status_code(status)}")
 
 
-def log_on_with_user(username: str, password: str):
+def log_on_with_user(user_name: str, user_pass: str):
     APP_NAME_TO_RUN = "C:\\Windows\\System32\\cmd.exe"
     Create_Process_With_Logon.argtypes = [
         LPCWSTR,
@@ -156,17 +157,17 @@ def log_on_with_user(username: str, password: str):
     Create_Process_With_Logon.restype = BOOL
 
     si = STARTUPINFO()
-    si_cb = ctypes.sizeof(STARTUPINFO)
+    si.cb = ctypes.sizeof(STARTUPINFO)
     pi = PROCESS_INFORMATION()
 
     status = Create_Process_With_Logon(
-        username,
+        user_name,
         None,  # NO DOMAIN SO LOCAL MACHINE
-        password,
+        user_pass,
         LOGON_WITH_PROFILE,  # LOGON_WITH_PROFILE
         APP_NAME_TO_RUN,  # APP NAME
         None,  # command line
-        CREATE_NEW_CONSOLE,  # creation flag
+        DWORD(0),  # creation flag
         None,  # environment
         None,  # current directory
         byref(si),
@@ -174,12 +175,17 @@ def log_on_with_user(username: str, password: str):
     )
 
     if status != 0:
+        # it launches a cmd window, and the user profile is created in C: drive
         print("success was able to start process with profile")
+        ctypes.windll.kernel32.CloseHandle(pi.hProcess)
+        ctypes.windll.kernel32.CloseHandle(pi.hThread)
+        # close all open handles to prevent resource leaks
+        # anything that returns a handle object should be deallocated
     else:
         print(f'an error occurred {ctypes.get_last_error()}')
 
 
-def add_user(user_name, password=None) -> None:
+def add_user(user_name, user_password=None) -> None:
     Net_user_add.argtypes = [
         LPCWSTR,  # SERVER_NAME in our case local computer
         DWORD,  # LEVEL
@@ -192,7 +198,7 @@ def add_user(user_name, password=None) -> None:
 
     # populate the struct
     user_info.usri1_name = user_name
-    user_info.usri1_password = password
+    user_info.usri1_password = user_password
     user_info.usri1_priv = user_privilege
     user_info.usri1_home_dir = None
     user_info.usri1_comment = None
@@ -207,16 +213,7 @@ def add_user(user_name, password=None) -> None:
     )
     if status == 0:  # NERR_Success
         print(f"{user_name} was successfully created")
-        try:
-            # create user folder
-            command_string_to_add_user_folder = f'runas /user:{user_name} cmd.exe'
-            args = shlex.split(command_string_to_add_user_folder)
-            subprocess.run(args)
-        except subprocess.CalledProcessError as exc:
-            print(
-                f"Process failed because did not return a successful return code. "
-                f"Returned {exc.returncode}\n{exc}"
-            )
+        log_on_with_user(user_name, user_password)
     else:
         print(f'failed to create {user_name} \n '
               f'STATUS:{return_status_code(status)}')
@@ -238,31 +235,3 @@ def delete_user(user_name: str) -> None:
         print(f'a system error has occurred {return_status_code(status)}')  # check the ms docs for the error codes
 
 
-if __name__ == "__main__":
-    while True:
-        option_map = {"1": "list users",
-                      "2": "add user",
-                      "3": "del user"}
-
-        for keys, options in option_map.items():
-            print(f"{keys} {options}")
-        user_input = (input("enter a option from the list: "))
-        action = option_map[user_input]
-
-        if action == "list users":
-            enumerate_users()
-
-        elif action == "add user":
-            username = input("enter a user_name:")
-            password = input("enter a password: ")
-            add_user(username, password)
-
-        elif action == "del user":
-            enumerate_users()
-            print("which user do u want to delete")
-            username = input("type the username u want to remeove: ")
-            delete_user(username)
-
-        else:
-            print("invalid command")
-            exit()
