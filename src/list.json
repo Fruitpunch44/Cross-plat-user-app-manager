@@ -1,0 +1,28 @@
+{
+  "applications": [
+    {
+      "name": "Google Chrome",
+      "url": "https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D%26iid%3D%7B158C2174-B77E-13D4-1454-8A05D2E111D3%7D%26lang%3Den%26browser%3D4%26usagestats%3D1%26appname%3DGoogle%2520Chrome%26needsadmin%3Dprefers%26ap%3D-arch_x64-statsdef_1%26installdataindex%3Dempty/update2/installers/ChromeSetup.exe"
+    },
+    {
+      "name": "Mozilla Firefox",
+      "url": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/142.0.1/win32/en-US/Firefox Installer.exe"
+    },
+    {
+      "name": "Visual Studio Code",
+      "url": "https://code.visualstudio.com/"
+    },
+    {
+      "name": "7-Zip",
+      "url": "https://www.7-zip.org/"
+    },
+    {
+      "name": "Notepad++",
+      "url": "https://notepad-plus-plus.org/downloads/"
+    },
+    {
+      "name": "Spotify",
+      "url": "https://www.spotify.com/download/windows/"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+# create a script that just runs the exe file directly after

@@ -1,0 +1,28 @@
+{
+  "file_paths": [
+    {
+      "name": "Google Chrome",
+      "path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    },
+    {
+      "name": "Mozilla Firefox",
+      "path": "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
+    },
+    {
+      "name": "Visual Studio Code",
+      "path": "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe"
+    },
+    {
+      "name": "7-Zip",
+      "path": "C:\\Program Files\\7-Zip\\7zFM.exe"
+    },
+    {
+      "name": "Notepad++",
+      "path": "C:\\Program Files\\Notepad++\\notepad++.exe"
+    },
+    {
+      "name": "Spotify",
+      "path": "C:\\Users\\%USERNAME%\\AppData\\Roaming\\Spotify\\Spotify.exe"
+    }
+  ]
+}

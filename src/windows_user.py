@@ -1,10 +1,18 @@
 import ctypes
 from ctypes import POINTER, byref, cast
 from ctypes.wintypes import LPWSTR, DWORD, LPCWSTR, LPDWORD, LPBYTE, LPVOID, HANDLE, WORD, BOOL
+from logging_helper import logger
+import os
+import getpass
+import check_admin_privlege as priv
 
 # load dll
 netapi32 = ctypes.WinDLL("Netapi32.dll")
 Advapi32 = ctypes.WinDLL("Advapi32.dll")
+
+# get the current user running the script
+user = os.getcwd().split(" ")
+current_user = user[0][9:][:7]
 
 # constants
 USER_Level = 1
@@ -24,7 +32,7 @@ Status_codes = {
 
 }
 LOGON_WITH_PROFILE = DWORD(1)  # logon_with_profile
-CREATE_NEW_CONSOLE = DWORD(10) # creation flag for log_on_with_user
+CREATE_NEW_CONSOLE = DWORD(10)  # creation flag for log_on_with_user
 
 
 def return_status_code(status_code: int) -> str:
@@ -32,7 +40,7 @@ def return_status_code(status_code: int) -> str:
     return res
 
 
-# incase you just want to return the name of users
+# incase you want to return the name of users only
 class USER_INFO_0(ctypes.Structure):
     _fields_ = [
         ("usri0_name", LPWSTR)
@@ -92,6 +100,7 @@ def which_user_info_level(user_info: int) -> object:
         return USER_INFO_1
     else:
         print(f"invalid info level {user_info}")
+        logger.logging.info(f"{user_info} is invalid")
 
 
 # api for creating deleting and adding
@@ -182,7 +191,9 @@ def log_on_with_user(user_name: str, user_pass: str):
         # close all open handles to prevent resource leaks
         # anything that returns a handle object should be deallocated
     else:
-        print(f'an error occurred {ctypes.get_last_error()}')
+        error = ctypes.get_last_error()
+        print(f'an error occurred {error}')
+        logger.logging.info(f"an error {error} occurred refer to ms docs for further info")
 
 
 def add_user(user_name, user_password=None) -> None:
@@ -206,7 +217,7 @@ def add_user(user_name, user_password=None) -> None:
     user_info.usri1_script_path = None
 
     status = Net_user_add(
-        None,  # Defaults to local host
+        None,  # Defaults to local host u can always change it
         USER_Level,
         cast(byref(user_info), LPBYTE),
         byref(parm_err)
@@ -214,6 +225,7 @@ def add_user(user_name, user_password=None) -> None:
     if status == 0:  # NERR_Success
         print(f"{user_name} was successfully created")
         log_on_with_user(user_name, user_password)
+        logger.logging.info(f"{current_user} with privileges{priv.return_priv_level()} created an account {user_name}")
     else:
         print(f'failed to create {user_name} \n '
               f'STATUS:{return_status_code(status)}')
@@ -231,7 +243,6 @@ def delete_user(user_name: str) -> None:
     )
     if status == 0:  # NERR_Success
         print(f"{user_name} has be deleted from local device ")
+        logger.logging.info(f"{current_user} with privileges {priv.return_priv_level()}deleted the user {user_name}")
     else:
         print(f'a system error has occurred {return_status_code(status)}')  # check the ms docs for the error codes
-
-
