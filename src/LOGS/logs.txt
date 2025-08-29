@@ -1,2 +1,3 @@
 2025-08-26 15:07:05,417:windows_user.py,:INFO:Olu-Ade created an account test2
 2025-08-26 15:07:24,714:windows_user.py,:INFO:Olu-Ade deleted the user test2
+2025-08-28 20:53:34,317:windows_user.py:INFO:Olu-Ade with privileges ADMINdeleted the user odu12

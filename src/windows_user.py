@@ -100,7 +100,7 @@ def which_user_info_level(user_info: int) -> object:
         return USER_INFO_1
     else:
         print(f"invalid info level {user_info}")
-        logger.logging.info(f"{user_info} is invalid")
+        logger.info(f"{user_info} is invalid")
 
 
 # api for creating deleting and adding
@@ -114,7 +114,7 @@ Create_Process_With_Logon = Advapi32.CreateProcessWithLogonW
 def enumerate_users() -> None:
     # add status codes for the return value of net_user_enumerate
     Net_user_enumerate.argtypes = [
-        LPCWSTR,  # servername
+        LPCWSTR,  # server name
         DWORD,  # level
         DWORD,  # filter
         POINTER(LPBYTE),  # bufptr (out)
@@ -142,8 +142,8 @@ def enumerate_users() -> None:
         user_array = USER_INFO_1 * entries_read.value
         users = cast(pointer_buff, POINTER(user_array)).contents
 
-        for ID, user in enumerate(users):
-            print(f"ID:{ID} user:{user.usri1_name} ")
+        for ID, users in enumerate(users):
+            print(f"ID:{ID} user:{users.usri1_name} ")
     else:
         print(f"got an error {return_status_code(status)}")
 
@@ -193,7 +193,7 @@ def log_on_with_user(user_name: str, user_pass: str):
     else:
         error = ctypes.get_last_error()
         print(f'an error occurred {error}')
-        logger.logging.info(f"an error {error} occurred refer to ms docs for further info")
+        logger.info(f"an error {error} occurred refer to ms docs for further info")
 
 
 def add_user(user_name, user_password=None) -> None:
@@ -225,7 +225,7 @@ def add_user(user_name, user_password=None) -> None:
     if status == 0:  # NERR_Success
         print(f"{user_name} was successfully created")
         log_on_with_user(user_name, user_password)
-        logger.logging.info(f"{current_user} with privileges{priv.return_priv_level()} created an account {user_name}")
+        logger.info(f"{current_user} with privileges{priv.is_user_admin()} created an account {user_name}")
     else:
         print(f'failed to create {user_name} \n '
               f'STATUS:{return_status_code(status)}')
@@ -243,6 +243,6 @@ def delete_user(user_name: str) -> None:
     )
     if status == 0:  # NERR_Success
         print(f"{user_name} has be deleted from local device ")
-        logger.logging.info(f"{current_user} with privileges {priv.return_priv_level()}deleted the user {user_name}")
+        logger.info(f"{current_user} with privileges {priv.is_user_admin()} deleted the user {user_name}")
     else:
         print(f'a system error has occurred {return_status_code(status)}')  # check the ms docs for the error codes

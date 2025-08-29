@@ -12,4 +12,4 @@ if not os.path.exists(logging_dir):
 logging.basicConfig(filename=logging_path,
                     level=logging.INFO,
                     format='%(asctime)s:%(filename)s:%(levelname)s:%(message)s')
-logger=logging.getLogger(__name__)
+logger = logging.getLogger(__name__)

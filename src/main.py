@@ -3,13 +3,14 @@ import argparse
 import windows_user as wu
 import Linux_user as Lu
 import application_downloader as ad
+
 cli = argparse.ArgumentParser("This is a CLI user/app manager")
 cli.add_argument("-A", "--Auto", action="store_true", help="Interactive mode with menu loop")
 cli.add_argument("-L", "--List", action="store_true", help="List all users on the system")
 cli.add_argument("-U", "--Username", type=str, help="Username to create or delete")
 cli.add_argument("-p", "--Password", type=str, help="Password for the user")
 cli.add_argument("-D", "--Delete", action="store_true", help="Delete the given user")
-cli.add_argument("-Do","--Download",action="store_true",type=str,help="Pass the name of the app u want to download")
+
 
 args = cli.parse_args()
 
@@ -43,6 +44,7 @@ if __name__ == "__main__":
                     Lu.create_user(username, password)
 
             elif choice == "3":
+                wu.enumerate_users() if is_windows() else Lu.list_users()
                 username = input("Enter username to delete: ")
                 if is_windows():
                     wu.delete_user(username)

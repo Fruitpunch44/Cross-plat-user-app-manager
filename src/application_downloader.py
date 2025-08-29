@@ -38,4 +38,3 @@ def check_app_list_availability_and_download(app_name: str):
             print(f"{app_name} not found in the list")
 
 
-print(check_app_list_availability_and_download("Google Chrome"))
